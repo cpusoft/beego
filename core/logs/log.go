@@ -359,6 +359,7 @@ func (bl *BeeLogger) SetPrefix(s string) {
 // start logger chan reading.
 // when chan is not empty, write logs.
 func (bl *BeeLogger) startLogger() {
+	fmt.Println("startLogger():")
 	gameOver := false
 	for {
 		select {

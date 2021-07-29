@@ -114,6 +114,7 @@ func (fc *FileCache) Init() error {
 	if err != nil || ok {
 		return err
 	}
+	fmt.Println("FileCache: Init():", fc.CachePath)
 	err = os.MkdirAll(fc.CachePath, os.ModePerm)
 	if err != nil {
 		return berror.Wrapf(err, CreateFileCacheDirFailed,

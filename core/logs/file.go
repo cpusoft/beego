@@ -121,6 +121,7 @@ func (w *fileLogWriter) Init(config string) error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("Init():config:", config, "   w:", w)
 	if len(w.Filename) == 0 {
 		return errors.New("jsonconfig must have filename")
 	}
@@ -147,6 +148,7 @@ func (w *fileLogWriter) startLogger() error {
 	if err != nil {
 		return err
 	}
+	fmt.Println("startLogger(): file:", file)
 	if w.fileWriter != nil {
 		w.fileWriter.Close()
 	}
@@ -155,12 +157,14 @@ func (w *fileLogWriter) startLogger() error {
 }
 
 func (w *fileLogWriter) needRotateDaily(day int) bool {
+	fmt.Println("needRotateDaily(): day:", day)
 	return (w.MaxLines > 0 && w.maxLinesCurLines >= w.MaxLines) ||
 		(w.MaxSize > 0 && w.maxSizeCurSize >= w.MaxSize) ||
 		(w.Daily && day != w.dailyOpenDate)
 }
 
 func (w *fileLogWriter) needRotateHourly(hour int) bool {
+	fmt.Println("needRotateHourly(): houre:", hour)
 	return (w.MaxLines > 0 && w.maxLinesCurLines >= w.MaxLines) ||
 		(w.MaxSize > 0 && w.maxSizeCurSize >= w.MaxSize) ||
 		(w.Hourly && hour != w.hourlyOpenDate)
@@ -176,8 +180,10 @@ func (w *fileLogWriter) WriteMsg(lm *LogMsg) error {
 
 	msg := w.formatter.Format(lm)
 	if w.Rotate {
+		fmt.Println("WriteMsg(): Rotate pass:", d, h)
 		w.RLock()
 		if w.needRotateHourly(h) {
+			fmt.Println("WriteMsg(): needRotateHourly pass:", h)
 			w.RUnlock()
 			w.Lock()
 			if w.needRotateHourly(h) {
@@ -187,6 +193,7 @@ func (w *fileLogWriter) WriteMsg(lm *LogMsg) error {
 			}
 			w.Unlock()
 		} else if w.needRotateDaily(d) {
+			fmt.Println("WriteMsg(): needRotateDaily pass:", h)
 			w.RUnlock()
 			w.Lock()
 			if w.needRotateDaily(d) {
@@ -219,6 +226,7 @@ func (w *fileLogWriter) createLogFile() (*os.File, error) {
 
 	filepath := path.Dir(w.Filename)
 	os.MkdirAll(filepath, os.FileMode(perm))
+	fmt.Println("createLogFile():w.Filename:", w.Filename, "   filepath:", filepath)
 
 	fd, err := os.OpenFile(w.Filename, os.O_WRONLY|os.O_APPEND|os.O_CREATE, os.FileMode(perm))
 	if err == nil {
@@ -229,6 +237,7 @@ func (w *fileLogWriter) createLogFile() (*os.File, error) {
 }
 
 func (w *fileLogWriter) initFd() error {
+	fmt.Println("initFd()")
 	fd := w.fileWriter
 	fInfo, err := fd.Stat()
 	if err != nil {
@@ -241,8 +250,10 @@ func (w *fileLogWriter) initFd() error {
 	w.hourlyOpenDate = w.hourlyOpenTime.Hour()
 	w.maxLinesCurLines = 0
 	if w.Hourly {
+		fmt.Println("initFd():w.Hourly:", w.Hourly, "  will hourlyRotate:", w.hourlyOpenTime)
 		go w.hourlyRotate(w.hourlyOpenTime)
 	} else if w.Daily {
+		fmt.Println("initFd():w.Daily:", w.Daily, "  will dailyRotate:", w.dailyOpenTime)
 		go w.dailyRotate(w.dailyOpenTime)
 	}
 	if fInfo.Size() > 0 && w.MaxLines > 0 {
@@ -262,6 +273,7 @@ func (w *fileLogWriter) dailyRotate(openTime time.Time) {
 	<-tm.C
 	w.Lock()
 	if w.needRotateDaily(time.Now().Day()) {
+		fmt.Println("dailyRotate(): needRotateDaily pass")
 		if err := w.doRotate(time.Now()); err != nil {
 			fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.Filename, err)
 		}
@@ -277,6 +289,7 @@ func (w *fileLogWriter) hourlyRotate(openTime time.Time) {
 	<-tm.C
 	w.Lock()
 	if w.needRotateHourly(time.Now().Hour()) {
+		fmt.Println("hourlyRotate(): needRotateHourly pass")
 		if err := w.doRotate(time.Now()); err != nil {
 			fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", w.Filename, err)
 		}
@@ -316,6 +329,7 @@ func (w *fileLogWriter) lines() (int, error) {
 func (w *fileLogWriter) doRotate(logTime time.Time) error {
 	// file exists
 	// Find the next available number
+	fmt.Println("doRotate():w.MaxFilesCurFiles:", w.MaxFilesCurFiles)
 	num := w.MaxFilesCurFiles + 1
 	fName := ""
 	format := ""
@@ -328,6 +342,7 @@ func (w *fileLogWriter) doRotate(logTime time.Time) error {
 	_, err = os.Lstat(w.Filename)
 	if err != nil {
 		// even if the file is not exist or other ,we should RESTART the logger
+		fmt.Println("doRotate():Lstat fail:", w.Filename, err)
 		goto RESTART_LOGGER
 	}
 
@@ -338,17 +353,20 @@ func (w *fileLogWriter) doRotate(logTime time.Time) error {
 		format = "2006-01-02"
 		openTime = w.dailyOpenTime
 	}
-
+	fmt.Println("doRotate():w.MaxLines:", w.MaxLines, "   w.MaxSize:", w.MaxSize)
 	// only when one of them be setted, then the file would be splited
 	if w.MaxLines > 0 || w.MaxSize > 0 {
 		for ; err == nil && num <= w.MaxFiles; num++ {
 			fName = w.fileNameOnly + fmt.Sprintf(".%s.%03d%s", logTime.Format(format), num, w.suffix)
 			_, err = os.Lstat(fName)
+			fmt.Println("doRotate():w.MaxLines:", w.MaxLines, "   w.MaxSize:", w.MaxSize,
+				"  w.MaxFiles:", w.MaxFiles, " num:", num, "   fName:", fName)
 		}
 	} else {
 		fName = w.fileNameOnly + fmt.Sprintf(".%s.%03d%s", openTime.Format(format), num, w.suffix)
 		_, err = os.Lstat(fName)
 		w.MaxFilesCurFiles = num
+		fmt.Println("doRotate(): num:", num, "   fName:", fName)
 	}
 
 	// return error if the last file checked still existed
