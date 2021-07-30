@@ -175,15 +175,15 @@ func (w *fileLogWriter) WriteMsg(lm *LogMsg) error {
 	if lm.Level > w.Level {
 		return nil
 	}
-
+	fmt.Println("fileLogWriter WriteMsg(): Rotate pass:", d, h, msg)
 	_, d, h := formatTimeHeader(lm.When)
 
 	msg := w.formatter.Format(lm)
 	if w.Rotate {
-		fmt.Println("WriteMsg(): Rotate pass:", d, h)
+		fmt.Println("fileLogWriter WriteMsg(): Rotate pass:", d, h, msg)
 		w.RLock()
 		if w.needRotateHourly(h) {
-			fmt.Println("WriteMsg(): needRotateHourly pass:", h)
+			fmt.Println("fileLogWriter WriteMsg(): needRotateHourly pass:", h)
 			w.RUnlock()
 			w.Lock()
 			if w.needRotateHourly(h) {
@@ -193,7 +193,7 @@ func (w *fileLogWriter) WriteMsg(lm *LogMsg) error {
 			}
 			w.Unlock()
 		} else if w.needRotateDaily(d) {
-			fmt.Println("WriteMsg(): needRotateDaily pass:", h)
+			fmt.Println("fileLogWriter WriteMsg(): needRotateDaily pass:", h)
 			w.RUnlock()
 			w.Lock()
 			if w.needRotateDaily(d) {
@@ -208,6 +208,7 @@ func (w *fileLogWriter) WriteMsg(lm *LogMsg) error {
 	}
 
 	w.Lock()
+	fmt.Println("fileLogWriter WriteMsg(): weill fileWriter:", msg)
 	_, err := w.fileWriter.Write([]byte(msg))
 	if err == nil {
 		w.maxLinesCurLines++

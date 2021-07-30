@@ -42,6 +42,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cpusoft/goutil/jsonutil"
 	"github.com/pkg/errors"
 )
 
@@ -243,7 +244,8 @@ func (bl *BeeLogger) DelLogger(adapterName string) error {
 }
 
 func (bl *BeeLogger) writeToLoggers(lm *LogMsg) {
-	for _, l := range bl.outputs {
+	for iii, l := range bl.outputs {
+		fmt.Println("writeToLoggers:", iii, jsonutil.MarshalJson(lm))
 		err := l.WriteMsg(lm)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "unable to WriteMsg to adapter:%v,error:%v\n", l.name, err)
@@ -255,6 +257,7 @@ func (bl *BeeLogger) Write(p []byte) (n int, err error) {
 	if len(p) == 0 {
 		return 0, nil
 	}
+	fmt.Println("Write():p: ", string(p))
 	// writeMsg will always add a '\n' character
 	if p[len(p)-1] == '\n' {
 		p = p[0 : len(p)-1]
@@ -319,6 +322,7 @@ func (bl *BeeLogger) writeMsg(lm *LogMsg) error {
 			logMsgPool.Put(lm)
 		}
 	} else {
+		fmt.Println("writeMsg(): will writeToLoggers ", jsonutil.MarshalJson(lm))
 		bl.writeToLoggers(lm)
 	}
 	return nil
@@ -493,6 +497,7 @@ func (bl *BeeLogger) Informational(format string, v ...interface{}) {
 	if LevelInfo > bl.level {
 		return
 	}
+	fmt.Println("Informational():format:", format)
 	lm := &LogMsg{
 		Level: LevelInfo,
 		Msg:   format,
