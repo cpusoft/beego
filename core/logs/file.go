@@ -175,10 +175,10 @@ func (w *fileLogWriter) WriteMsg(lm *LogMsg) error {
 	if lm.Level > w.Level {
 		return nil
 	}
-	fmt.Println("fileLogWriter WriteMsg(): Rotate pass:", d, h, msg)
-	_, d, h := formatTimeHeader(lm.When)
 
+	_, d, h := formatTimeHeader(lm.When)
 	msg := w.formatter.Format(lm)
+	fmt.Println("fileLogWriter WriteMsg():d,h,msg:", d, h, msg)
 	if w.Rotate {
 		fmt.Println("fileLogWriter WriteMsg(): Rotate pass:", d, h, msg)
 		w.RLock()
